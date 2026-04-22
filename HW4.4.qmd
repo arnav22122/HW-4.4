@@ -1,0 +1,163 @@
+---
+title: "HW 4.3 Reproducible Data Analysis"
+author: "Arnav Hemant Patel"
+date: 4/15/2026
+format: pdf
+---
+
+# Busiest Airports Analysis
+
+## Table
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(knitr)
+
+airport_data <- tribble(
+  ~year, ~iata_code, ~airport_name, ~total_passengers,
+  2020, "ATL", "Hartsfield-Jackson Atlanta Intl", 42918685,
+  2021, "ATL", "Hartsfield-Jackson Atlanta Intl", 75704760,
+  2022, "ATL", "Hartsfield-Jackson Atlanta Intl", 93699630,
+  2023, "ATL", "Hartsfield-Jackson Atlanta Intl", 104653451,
+  2024, "ATL", "Hartsfield-Jackson Atlanta Intl", 108067766,
+  2020, "DEN", "Denver International Airport", 33741129,
+  2021, "DEN", "Denver International Airport", 58828552,
+  2022, "DEN", "Denver International Airport", 69286461,
+  2023, "DEN", "Denver International Airport", 77837917,
+  2024, "DEN", "Denver International Airport", 82358744,
+  2020, "DXB", "Dubai International Airport", 25836771,
+  2021, "DXB", "Dubai International Airport", 29110609,
+  2022, "DXB", "Dubai International Airport", 66069981,
+  2023, "DXB", "Dubai International Airport", 86994365,
+  2024, "DXB", "Dubai International Airport", 92331506,
+  2020, "FRA", "Frankfurt Airport", 18768601,
+  2021, "FRA", "Frankfurt Airport", 24812849,
+  2022, "FRA", "Frankfurt Airport", 48918482,
+  2023, "FRA", "Frankfurt Airport", 59355389,
+  2024, "FRA", "Frankfurt Airport", 61564957,
+  2020, "LHR", "Heathrow Airport", 22111469,
+  2021, "LHR", "Heathrow Airport", NA,
+  2022, "LHR", "Heathrow Airport", 61614508,
+  2023, "LHR", "Heathrow Airport", 79183364,
+  2024, "LHR", "Heathrow Airport", 83884572,
+  2020, "PKX", "Beijing Daxing Intl", NA,
+  2021, "PKX", "Beijing Daxing Intl", 25051012,
+  2022, "PKX", "Beijing Daxing Intl", NA,
+  2023, "PKX", "Beijing Daxing Intl", NA,
+  2024, "PKX", "Beijing Daxing Intl", 49441029
+)
+
+airport_table <- airport_data %>%
+  mutate(`Total Passengers (Millions)` = round(total_passengers / 1000000, 3)) %>%
+  select(
+    Airport = airport_name,
+    IATA = iata_code,
+    Year = year,
+    `Total Passengers (Millions)`
+  )
+
+kable(
+  airport_table,
+  caption = "Table 1: Passenger counts in millions for six major airports from 2020 to 2024."
+)
+```
+
+The table summarizes passenger traffic for six major airports between 2020 and 2024. Atlanta remains one of the busiest airports throughout the period, while Dubai and Heathrow also show strong passenger totals in the later years. Some airports have missing values in certain years, which should be considered when comparing trends across the full period.
+
+## Plot
+
+```{r}
+#| echo: false
+#| fig-cap: "Figure 1: Passenger traffic trends for six major airports from 2020 to 2024."
+#| message: false
+#| warning: false
+
+airport_plot_data <- airport_data %>%
+  mutate(total_passengers_millions = total_passengers / 1000000)
+
+ggplot(airport_plot_data, aes(x = year, y = total_passengers_millions, color = iata_code, group = iata_code)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  labs(
+    x = "Year",
+    y = "Total Passengers (Millions)",
+    color = "Airport"
+  ) +
+  theme_minimal()
+```
+
+The plot makes the overall trends easier to compare across airports. Most airports show strong growth after 2020, which suggests recovery in air travel following the pandemic period. Atlanta, Dubai, and Heathrow reach especially high passenger levels by 2023 and 2024, while Beijing Daxing appears less consistent because data are missing for multiple years. Compared with the table, the plot makes the pace of recovery much easier to see.
+
+# Monte Carlo Numerical Integration
+
+## Small Multiple Plot
+
+```{r}
+#| echo: false
+#| fig-cap: "Monte Carlo simulation plots for four different sample sizes."
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(patchwork)
+
+simulate_monte_carlo <- function(n, x_min, x_max, y_min, y_max) {
+  tibble(
+    x = runif(n, x_min, x_max),
+    y = runif(n, y_min, y_max)
+  )
+}
+
+make_mc_plot <- function(n) {
+  points <- simulate_monte_carlo(n, x_min = 0, x_max = 4, y_min = 0, y_max = 0.5) %>%
+    mutate(below_curve = y <= dweibull(x, shape = 1.5, scale = 1))
+
+  estimate <- nrow(filter(points, below_curve)) / nrow(points) * (4 * 0.5)
+
+  ggplot(points, aes(x = x, y = y, color = below_curve)) +
+    geom_point(alpha = 0.4, size = 0.6) +
+    stat_function(
+      fun = dweibull,
+      args = list(shape = 1.5, scale = 1),
+      xlim = c(0, 4),
+      color = "black",
+      linewidth = 1
+    ) +
+    labs(
+      title = paste("n =", n, ", estimate =", round(estimate, 4)),
+      x = "x",
+      y = "y",
+      color = "Below Curve"
+    ) +
+    theme_bw()
+}
+
+p1 <- make_mc_plot(10)
+p2 <- make_mc_plot(100)
+p3 <- make_mc_plot(1000)
+p4 <- make_mc_plot(10000)
+
+(p1 + p2) / (p3 + p4)
+```
+
+Monte Carlo numerical integration estimates the area under a curve by randomly generating points inside a rectangle and checking what proportion of them fall below the function. In this case, the function is the Weibull density with x-values from 0 to 4 and y-values from 0 to 0.5. The area of the rectangle is therefore 2, so the proportion of points below the curve is multiplied by 2 to estimate the integral.
+
+The small multiple plot shows how the estimate changes as the number of simulated points increases. With only 10 points, the estimate is rough and highly variable, but as the sample size increases to 100, 1000, and 10000, the point pattern follows the curve more clearly and the estimate becomes more stable. This supports the idea that Monte Carlo integration becomes more reliable as the number of random points increases.
+
+# Generative AI Reflection
+
+## Use of Generative AI
+
+Generative AI tools such as ChatGPT were used mainly to verify the correctness of my work and check for any missing components. The code and analysis were written independently, and AI was only used to review structure, catch small errors, and confirm that the requirements of the assignment were met.
+
+## Evaluation of AI Output
+
+The AI outputs were useful for identifying gaps or minor mistakes, but they were not always directly applicable. Some suggestions needed to be adjusted to match the level and expectations of the course. This required reviewing and refining the information before using it.
+
+## Reflection
+
+Using generative AI as a verification tool helped ensure that my work was complete and correctly structured. It was most helpful for catching small issues and confirming that I was on the right track. However, the main understanding and implementation came from working through the assignment independently.
